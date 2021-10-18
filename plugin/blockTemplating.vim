@@ -22,6 +22,8 @@
 
 
 " =========[ Comments per filetype ]=========
+" Shamefully stolen for nerdCommenter : https://github.com/preservim/nerdcommenter
+" Somewhat 'adapted' (read => made barely functional)
 let s:ftCommentAssoc = {
     \ 'aap':'#',
     \ 'abc':'%',
@@ -451,20 +453,18 @@ let s:ftCommentAssoc = {
     \ 'xquery':'(:',
     \ 'yaml':'#',
     \ 'z8a':';',
-    \ }
+\ }
 
 " ================[ Commands ]================
 command! -nargs=1 Tc call s:PrintTemplate(g:title,<q-args>)
 command! -nargs=1 Stc call s:PrintTemplate(g:subTitle,<q-args>)
 
+let g:minimumPadding = 4
+
 " These options define what delimitators should be
 " used for templating
 let g:blockTextId = '__txt__'
-let g:blockCharSep = '\^'
-let g:blockNmbSep = '\`'
 let g:blockComCharId = '__comchar__'
-let g:blockPrepId = '__prep__'
-let g:blockSurrId = '__surround__'
 
 " Returns the comment char for the current file
 function! g:FiletypeComment()
@@ -478,104 +478,149 @@ endfunction
 
 " Prints the templates
 function! s:PrintTemplate(block, text)
-    let text = trim(a:text)
-    " The first line in a template is always the length of the block
-    let blockLength = a:block[0]
-    let dataStartIndex = 1
+    let g:userText = trim(a:text)
 
-    " Support for prepending every line
-    let prep = ""
-    let prepLine = split(a:block[dataStartIndex], g:blockCharSep)
-    if prepLine[0] == g:blockPrepId
-        let prep = s:ParseLine(prepLine[1:-1])
-        let dataStartIndex += 1
+   " Support for prepending every line
+    let g:prep = s:ParseElement(a:block.prepend)
+    let lines = a:block.lines
+    if type(lines) == 3
+        for line in lines
+            call s:ParseLine(line)
+        endfor
+    else
+        call s:ParseLine(lines)
     endif
-    unlet prepLine
-
-    " Support for surrounding text
-    let surround = ["",""]
-    let surroundLine = split(a:block[dataStartIndex], g:blockCharSep)
-    if surroundLine[0] == g:blockSurrId
-        let surround = surroundLine[1:2]
-        let dataStartIndex += 1
-    endif
-    unlet surroundLine
-
-    let additionalChars = (strchars(prep) + strchars(join(surround,"")))
-    let maxCharPerline = blockLength - additionalChars
-    for line in a:block[dataStartIndex:-1]
-        if !empty(matchstr(line,g:blockTextId))
-            " Determines how many lines should be necessary to print the text
-            " in the comment while keeping 4 chars of padding (if present in template)
-            let textLen = strchars(text)
-            " Weird way to devide by two and get the bigger half if there is one
-            let nmbOfLines = float2nr(ceil(textLen / (maxCharPerline + 0.0) ))
-            let textPerLine = []
-            let nmbCharPerLine = textLen / nmbOfLines
-            let splittedString = split(text,'\zs')
-            let counter = 0
-            " Divides the string in nth substring dependant on it's size
-            while counter < nmbOfLines
-                call add(textPerLine, join(splittedString[counter * nmbCharPerLine
-                \:(counter + 1) * nmbCharPerLine], ""))
-                let counter += 1
-            endwhile
-            " No idea if that's necessary
-            unlet counter
-            unlet textLen
-            unlet nmbCharPerLine
-            unlet nmbOfLines
-            unlet splittedString
-            " Per lines of text
-            for textline in textPerLine
-                " Calculate how much space is left by substracting the length of you line of txt,
-                " the length of the string use to prepend / surround text (if present),
-                " and all chars present in the template to the max number of chars per line
-                let padding = blockLength - (strchars(s:ParseLine(
-                            \substitute(line, g:blockTextId.g:blockCharSep, '', '')))
-                            \+ strchars(textline) + additionalChars)
-                " Calculate what how much padding you should have on the left/right and substitute
-                " the template string with thoses values
-                let beginPad = float2nr(ceil(padding / 2.0))
-                let fullLine = substitute(line, 'l', beginPad, '')
-                \->substitute('r', padding - beginPad, '')
-                \->substitute(g:blockTextId, surround[0].textline.surround[1], '')
-                :norm O<CR>
-                call setline('.',prep.s:ParseLine(fullLine))
-            endfor
-        else
-            :norm O<CR>
-            call setline('.',prep.s:ParseLine(line))
-        endif
-    endfor
 endfunction
 
-function s:ParseLine(line)
-    let result = ""
-    " Type casting to a string if input is a list
-    let typeLine = type(a:line)
-    if typeLine == 1
-        let line = split(a:line, g:blockCharSep)
-    elseif typeLine == 3
-        let line = a:line
+function! s:ParseLine(toParse)
+    let result = s:ParseElement(a:toParse)
+    if type(result) == 3
+        for resultLine in result
+            call s:PrintLine(resultLine)
+        endfor
+    else
+        call s:PrintLine(result)
     endif
-    for operation in line
-        try
-            let [char, nmb] = split(operation,g:blockNmbSep)
-        catch
-            let char = split(operation,g:blockNmbSep)[0]
-            let nmb = 1
-        endtry
-        " Doesn't handle multiple comment chars
-        if char == g:blockComCharId
-            let char = g:FiletypeComment()
+endfunction
+
+function! s:PrintLine(toPrint)
+    :norm O<CR>
+    call setline('.',g:prep.a:toPrint)
+endfunction
+function s:ParseUDText(uDLine)
+
+    let blockLength = str2nr(a:uDLine.size)
+    let surround = {
+        \'left': s:ParseElement(a:uDLine.surround.left),
+        \'right': s:ParseElement(a:uDLine.surround.right)
+    \}
+    " Very bad solution.... Should intercept all exeption for missing keys
+    " and act in contect of this application or have all values in templates
+    if !has_key(a:uDLine, 'lineContent')
+        call extend(a:uDLine, {'lineContent': {
+                                \'left' : {'chars' : ''},
+                                \'right': {'chars' : ''}
+                            \}
+                        \})
+    endif
+
+    " Calculate how much space is left by substracting the length of you line of txt,
+    " the length of the string use to prepend / surround text (if present),
+    " and all chars present in the template to the max number of chars per line
+    let lineContent = [a:uDLine.lineContent.left, a:uDLine.lineContent.right]
+    let additionalChars = strchars(g:prep) + strchars(join([surround.left,surround.right],"")) + strchars(s:ParseElement(lineContent))
+    let maxCharPerLine = blockLength - additionalChars - g:minimumPadding
+    " TODO : What happens if you have multiple lines of userdefined text ?
+    " TODO : Hyphenation or word that are longer than a line
+
+    " Determines how many lines should be necessary to print the text
+    " in the comment
+    let textPerLine = []
+    let nmbLine = 0
+    let counter = 0
+    let wordList = split(g:userText)
+    while counter < str2nr(system('echo "'.g:userText.'" | wc -w'))
+        let currWord = wordList[counter]
+        " Checking if adding a new word to the line will overflow
+        " the + 1 is because every word (except for the first one of the line)
+        " is prepended with a space
+        if nmbLine + 1 > len(textPerLine)
+                call add(textPerLine, '')
         endif
-        if str2nr(nmb) == 0 " Continue if nmb is not a number
-            continue
+        if strchars(textPerLine[nmbLine]) + strchars(currWord) + 1 > maxCharPerLine
+            if !empty(textPerLine[nmbLine])
+                let nmbLine += 1
+            else
+                " TODO: Hyphenate word
+            endif
+        else
+            if !empty(textPerLine[nmbLine])
+               let textPerLine[nmbLine] .= ' '
+            endif
+            let textPerLine[nmbLine] .= currWord
+            let counter += 1
         endif
-        let nmb = str2nr(nmb)
-        let result = result.repeat(char,nmb)
+    endwhile
+
+    " Per lines of text
+    let buff = []
+    let counter = 0
+    for text in textPerLine
+        " Calculate what how much padding you should have on the left/right and substitute
+        " the template string with thoses values
+        let padding = blockLength - (strchars(text) + additionalChars)
+        if counter + 1 > len(buff)
+            call insert(buff, "")
+        endif
+        let buff[0] = s:ParseElement([
+                            \a:uDLine.lineContent.left,
+                            \{ 'chars' : a:uDLine.leftPadding, 'nmb': padding/2 + padding%2},
+                            \{ 'chars' : surround.left },
+                            \{ 'chars' : text },
+                            \{ 'chars' : surround.right },
+                            \{ 'chars' : a:uDLine.rightPadding, 'nmb': padding/2 },
+                            \a:uDLine.lineContent.right
+                        \])
+        let counter += 1
     endfor
+    return buff
+endfunction
+
+function s:ParseChars(item)
+    let chars = a:item.chars
+    if chars == g:blockComCharId
+        let chars = g:FiletypeComment()
+    endif
+
+    if has_key(a:item, 'nmb')
+        let nmb = a:item.nmb
+    else
+        let nmb = 1
+    endif
+    let nmb = str2nr(nmb)
+    return repeat(chars,nmb)
+endfunction
+
+function! s:ParseList(list)
+    let buffer = ''
+    for chars in a:list
+        let buffer .= s:ParseChars(chars)
+    endfor
+    return buffer
+endfunction
+
+function! s:ParseElement(el)
+    let result = ''
+    let elType = type(a:el)
+    if elType == 3
+        let result = s:ParseList(a:el)
+    elseif elType == 4
+        if has_key(a:el, 'size')
+            let result = s:ParseUDText(a:el)
+        else
+            let result = s:ParseChars(a:el)
+        endif
+    endif
     return result
 endfunction
 
@@ -590,4 +635,4 @@ function! s:PrintFgTitle(title)
     endfor
 endfunction
 
-runtime templates/*
+" runtime templates/*
