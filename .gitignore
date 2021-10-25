@@ -1,1 +1,4 @@
 .msg
+tools/*
+!tools/block2Json.py
+!tools/usage.py

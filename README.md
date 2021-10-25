@@ -11,7 +11,7 @@
 This beautiful vim plugin has so much to offer !
 
 ### Can do's
-* Converts a template to a block of text !
+* Converts json to a block of text !
 > ie 
 ```vim
 46

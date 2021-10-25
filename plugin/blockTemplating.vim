@@ -1,624 +1,207 @@
-" ============================================
-" =                                          =
-" =         [ Prints comment blocks ]        =
-" =                                          =
-" ============================================
 
 " ==================[ Todos ]==================
-" * Add more templates
-" * Look at the 'Section' thingy and vim doc in general
-"       (if thats already been done, i'll be pissed)
-" * Try and make a script to convert blocks to templates (should be easy ;) )
-
+" TODO : Add more templates
+" TODO :Try and make a script to convert blocks to templates (should be easy ;) )
+" TODO :Is there a way to better handle nulls and wrong values in the templates ?
+"       making a tool to make templates should cover the wrong values but I still
+"       want to keep the options of making/modifying your templates by hand viable...
+" TODO: Documentation...
 
 " if exists('g:blockTemplating#Loaded')
 "     finish
 " endif
 " let g:blockTemplating#Loaded = 1
 
-" =========[ Comments per filetype ]=========
-" Shamefully stolen for nerdCommenter : https://github.com/preservim/nerdcommenter
-" Somewhat 'adapted' (read => made barely functional)
-let s:ftCommentAssoc = {
-    \ 'aap':'#',
-    \ 'abc':'%',
-    \ 'acedb':'//',
-    \ 'actionscript':'//',
-    \ 'ada':'--',
-    \ 'ahdl':'--',
-    \ 'ahk':';',
-    \ 'amiga':';',
-    \ 'aml':'/*',
-    \ 'ampl':'#',
-    \ 'ansible':'#',
-    \ 'apache':'#',
-    \ 'apachestyle':'#',
-    \ 'apdl':'!',
-    \ 'applescript':'--',
-    \ 'armasm':';',
-    \ 'asciidoc':'//',
-    \ 'asm':';',
-    \ 'asm68k':';',
-    \ 'asn':'--',
-    \ 'asp':'%',
-    \ 'aspvbs':'''',
-    \ 'asterisk':';',
-    \ 'asy':'//',
-    \ 'atlas':'C',
-    \ 'augeas':'(*',
-    \ 'autohotkey':';',
-    \ 'autoit':';',
-    \ 'ave':"'",
-    \ 'awk':'#',
-    \ 'basic':"'",
-    \ 'bbx':'%',
-    \ 'bc':'#',
-    \ 'bib':'//',
-    \ 'bindzone':';',
-    \ 'bind-named':'//',
-    \ 'blade':'{{--',
-    \ 'bst':'%',
-    \ 'btm':'::',
-    \ 'c':'/*',
-    \ 'cabal':'--',
-    \ 'calibre':'//',
-    \ 'caos':'*',
-    \ 'catalog':'--',
-    \ 'cf':'<!---',
-    \ 'cfg':'#',
-    \ 'cg':'//',
-    \ 'ch':'//',
-    \ 'cl':'#',
-    \ 'clean':'//',
-    \ 'clipper':'//',
-    \ 'clojure':';',
-    \ 'cmake':'#',
-    \ 'cocci':'//',
-    \ 'coffee':'#',
-    \ 'conkyrc':'#',
-    \ 'context':'%',
-    \ 'coq':'(*',
-    \ 'cpp':'//',
-    \ 'crontab':'#',
-    \ 'cs':'//',
-    \ 'csp':'--',
-    \ 'cterm':'*',
-    \ 'cucumber':'#',
-    \ 'cuda':'//',
-    \ 'cvs':'CVS:',
-    \ 'cypher':'//',
-    \ 'cython':'# ',
-    \ 'd':'//',
-    \ 'dakota':'#',
-    \ 'dcl':'$!',
-    \ 'debcontrol':'#',
-    \ 'debsources':'#',
-    \ 'def':';',
-    \ 'desktop':'#',
-    \ 'dhcpd':'#',
-    \ 'diff':'#',
-    \ 'django':'{% comment %}',
-    \ 'dns':';',
-    \ 'docbk':'<!--',
-    \ 'dockerfile':'#',
-    \ 'dosbatch':'REM ',
-    \ 'dosini':';',
-    \ 'dot':'//',
-    \ 'dracula':';',
-    \ 'dsl':';',
-    \ 'dtml':'<dtml-comment>',
-    \ 'dylan':'//',
-    \ 'ebuild':'#',
-    \ 'ecd':'#',
-    \ 'eclass':'#',
-    \ 'eiffel':'--',
-    \ 'elf':"'",
-    \ 'elixir':'#',
-    \ 'elm':'--',
-    \ 'elmfilt':'#',
-    \ 'ember-script':'#',
-    \ 'emblem':'/',
-    \ 'erlang':'%',
-    \ 'eruby':'<%#',
-    \ 'esmtprc':'#',
-    \ 'exim':'#',
-    \ 'expect':'#',
-    \ 'exports':'#',
-    \ 'factor':'! ',
-    \ 'fancy':'#',
-    \ 'faust':'//',
-    \ 'fgl':'#',
-    \ 'fluent':'#',
-    \ 'focexec':'-*',
-    \ 'form':'*',
-    \ 'fortran':'!',
-    \ 'foxpro':'*',
-    \ 'fsharp':'(*',
-    \ 'fstab':'#',
-    \ 'fvwm':'#',
-    \ 'fx':'//',
-    \ 'gams':'*',
-    \ 'gdb':'#',
-    \ 'gdmo':'--',
-    \ 'gdscript3':'# ',
-    \ 'geek':'GEEK_COMMENT:',
-    \ 'genshi':'<!--',
-    \ 'gentoo-conf-d':'#',
-    \ 'gentoo-env-d':'#',
-    \ 'gentoo-init-d':'#',
-    \ 'gentoo-make-conf':'#',
-    \ 'gentoo-package-keywords':'#',
-    \ 'gentoo-package-mask':'#',
-    \ 'gentoo-package-use':'#',
-    \ 'gitcommit':'#',
-    \ 'gitconfig':';',
-    \ 'gitignore':'#',
-    \ 'gitrebase':'#',
-    \ 'glsl':'//',
-    \ 'gnuplot':'#',
-    \ 'go':'//',
-    \ 'groff':'\#',
-    \ 'groovy':'//',
-    \ 'gsp':'<%--',
-    \ 'gtkrc':'#',
-    \ 'h':'//',
-    \ 'haml':'-#',
-    \ 'handlebars':'{{!-- ',
-    \ 'haskell':'--',
-    \ 'haxe':'//',
-    \ 'hb':'#',
-    \ 'hbs':'{{!-- ',
-    \ 'hercules':'//',
-    \ 'hive':'-- ',
-    \ 'hocon':'//',
-    \ 'hog':'#',
-    \ 'hostsaccess':'#',
-    \ 'htmlcheetah':'##',
-    \ 'htmldjango':'{% comment %}',
-    \ 'htmlos':'#',
-    \ 'hxml':'#',
-    \ 'hyphy':'//',
-    \ 'ia64':'#',
-    \ 'icon':'#',
-    \ 'idl':'//',
-    \ 'idlang':';',
-    \ 'idris':'{-',
-    \ 'incar':'!',
-    \ 'inform':'!',
-    \ 'inittab':'#',
-    \ 'ishd':'//',
-    \ 'iss':';',
-    \ 'ist':'%',
-    \ 'jade':'//-',
-    \ 'java':'//',
-    \ 'javacc':'//',
-    \ 'javascript':'//',
-    \ 'javascriptreact':'//',
-    \ 'javascript.jquery':'//',
-    \ 'jess':';',
-    \ 'jgraph':'(*',
-    \ 'jinja':'{#',
-    \ 'jproperties':'#',
-    \ 'jsonc':'//',
-    \ 'jsonnet':'//',
-    \ 'jsp':'<%--',
-    \ 'julia':'# ',
-    \ 'kivy':'#',
-    \ 'kix':';',
-    \ 'kscript':'//',
-    \ 'lace':'--',
-    \ 'laravel':'{{--',
-    \ 'ldif':'#',
-    \ 'ledger':'#',
-    \ 'less':'/*',
-    \ 'lhaskell':'>{-',
-    \ 'lilo':'#',
-    \ 'lilypond':'%',
-    \ 'liquid':'{% comment %}',
-    \ 'lisp':';',
-    \ 'llvm':';',
-    \ 'lotos':'(*',
-    \ 'lout':'#',
-    \ 'lpc':'//',
-    \ 'lprolog':'%',
-    \ 'lscript':"'",
-    \ 'lss':'#',
-    \ 'lua':'--',
-    \ 'lynx':'#',
-    \ 'lytex':'%',
-    \ 'm4':'dnl ',
-    \ 'mail':'> ',
-    \ 'mako':'##',
-    \ 'man':'."',
-    \ 'mandoc':'.\\"',
-    \ 'map':'%',
-    \ 'maple':'#',
-    \ 'markdown':'<!--',
-    \ 'masm':';',
-    \ 'mason':'<% #',
-    \ 'master':'$',
-    \ 'matlab':'%',
-    \ 'mel':'//',
-    \ 'meson':'#',
-    \ 'mib':'--',
-    \ 'minizinc':'% ',
-    \ 'mips':'#',
-    \ 'mirah':'#',
-    \ 'mkd':'<!---',
-    \ 'mma':'(*',
-    \ 'model':'$',
-    \ 'modula2':'(*',
-    \ 'modula3':'(*',
-    \ 'molpro':'!',
-    \ 'monk':';',
-    \ 'mush':'#',
-    \ 'mustache':'{{!',
-    \ 'nagios':';',
-    \ 'named':'//',
-    \ 'nasm':';',
-    \ 'nastran':'$',
-    \ 'natural':'/*',
-    \ 'ncf':';',
-    \ 'newlisp':';',
-    \ 'nginx':'#',
-    \ 'nimrod':'#',
-    \ 'nix':'#',
-    \ 'nroff':'\"',
-    \ 'nsis':'#',
-    \ 'ntp':'#',
-    \ 'objc':'//',
-    \ 'objcpp':'//',
-    \ 'objj':'//',
-    \ 'ocaml':'(*',
-    \ 'occam':'--',
-    \ 'octave':'%',
-    \ 'omlet':'(*',
-    \ 'omnimark':';',
-    \ 'ooc':'//',
-    \ 'openroad':'//',
-    \ 'opl':'REM',
-    \ 'ora':'#',
-    \ 'ox':'//',
-    \ 'paludis-use-conf':'#',
-    \ 'pandoc':'<!--',
-    \ 'pascal':'{',
-    \ 'patran':'$',
-    \ 'pcap':'#',
-    \ 'pccts':'//',
-    \ 'pdf':'%',
-    \ 'perl':'#',
-    \ 'pfmain':'//',
-    \ 'php':'//',
-    \ 'pic':';',
-    \ 'pike':'//',
-    \ 'pilrc':'//',
-    \ 'pine':'#',
-    \ 'plm':'//',
-    \ 'plsql':'-- ',
-    \ 'po':'#',
-    \ 'poscar':'!',
-    \ 'postscr':'%',
-    \ 'pov':'//',
-    \ 'povini':';',
-    \ 'ppd':'%',
-    \ 'ppwiz':';;',
-    \ 'praat':'#',
-    \ 'privoxy':'#',
-    \ 'processing':'//',
-    \ 'prolog':'%',
-    \ 'proto':'//',
-    \ 'ps1':'#',
-    \ 'psf':'#',
-    \ 'ptcap':'#',
-    \ 'pug':'//-',
-    \ 'puppet':'#',
-    \ 'pyrex':'# ',
-    \ 'python':'# ',
-    \ 'r':'#',
-    \ 'racket':';',
-    \ 'radiance':'#',
-    \ 'ratpoison':'#',
-    \ 'rc':'//',
-    \ 'rebol':';',
-    \ 'registry':';',
-    \ 'rego':'#',
-    \ 'remind':'#',
-    \ 'renpy':'# ',
-    \ 'resolv':'#',
-    \ 'rgb':'!',
-    \ 'rib':'#',
-    \ 'rmd':'<!--',
-    \ 'robot':'#',
-    \ 'robots':'#',
-    \ 'rspec':'#',
-    \ 'ruby':'#',
-    \ 'rust':'//',
-    \ 'sa':'--',
-    \ 'samba':';',
-    \ 'sass':'//',
-    \ 'sather':'--',
-    \ 'scala':'//',
-    \ 'scheme':';',
-    \ 'scilab':'//',
-    \ 'scilla':'(*',
-    \ 'scons':'#',
-    \ 'scsh':';',
-    \ 'scss':'//',
-    \ 'sdc':'#',
-    \ 'sed':'#',
-    \ 'sentinel':'#',
-    \ 'sgmldecl':'--',
-    \ 'sgmllnx':'<!--',
-    \ 'sh':'#',
-    \ 'shader_test':'#',
-    \ 'sicad':'*',
-    \ 'sile':'%',
-    \ 'simula':'%',
-    \ 'sinda':'$',
-    \ 'skill':';',
-    \ 'slang':'%',
-    \ 'slice':'//',
-    \ 'slim':'/',
-    \ 'slrnrc':'%',
-    \ 'sls':'#',
-    \ 'sm':'#',
-    \ 'smarty':'{*',
-    \ 'smil':'<!',
-    \ 'smith':';',
-    \ 'sml':'(*',
-    \ 'snakemake':'#',
-    \ 'snippets':'#',
-    \ 'snnsnet':'#',
-    \ 'snnspat':'#',
-    \ 'snnsres':'#',
-    \ 'snobol4':'*',
-    \ 'spec':'#',
-    \ 'specman':'//',
-    \ 'spectre':'//',
-    \ 'spice':'$',
-    \ 'spin':'''',
-    \ 'sql':'-- ',
-    \ 'sqlforms':'-- ',
-    \ 'sqlj':'-- ',
-    \ 'sqr':'!',
-    \ 'squid':'#',
-    \ 'ss':';',
-    \ 'sshconfig':'#',
-    \ 'sshdconfig':'#',
-    \ 'st':'"',
-    \ 'stan':'//',
-    \ 'stp':'/*',
-    \ 'supercollider':'//',
-    \ 'swift':'/*',
-    \ 'systemverilog':'//',
-    \ 'tads':'//',
-    \ 'tags':';',
-    \ 'tak':'$',
-    \ 'tasm':';',
-    \ 'tcl':'#',
-    \ 'teak':'//',
-    \ 'terraform':'#',
-    \ 'tex':'%',
-    \ 'texinfo':'@c ',
-    \ 'texmf':'%',
-    \ 'tf':'#',
-    \ 'tidy':'#',
-    \ 'tli':'#',
-    \ 'tmux':'#',
-    \ 'toml':'#',
-    \ 'trasys':'$',
-    \ 'troff':'.\\"',
-    \ 'tsalt':'//',
-    \ 'tsscl':'#',
-    \ 'tssgm':"comment = '",
-    \ 'ttl':'#',
-    \ 'tup':'#',
-    \ 'twig':'{#',
-    \ 'txt2tags':'%',
-    \ 'typescript':'//',
-    \ 'typescriptreact':'//',
-    \ 'uc':'//',
-    \ 'uc4':'!',
-    \ 'uil':'!',
-    \ 'upstart':'#',
-    \ 'vala':'//',
-    \ 'vasp':'!',
-    \ 'vb': { 'left': "'" },
-    \ 'velocity':'##',
-    \ 'vera':'/*',
-    \ 'verilog':'//',
-    \ 'verilog_systemverilog':'//',
-    \ 'vgrindefs':'#',
-    \ 'vhdl':'--',
-    \ 'vimperator':'"',
-    \ 'vim':'"',
-    \ 'virata':'%',
-    \ 'vrml':'#',
-    \ 'vsejcl':'/*',
-    \ 'webmacro':'##',
-    \ 'wget':'#',
-    \ 'wikipedia':'<!--',
-    \ 'winbatch':';',
-    \ 'wml':'#',
-    \ 'wvdial':';',
-    \ 'xdefaults':'!',
-    \ 'xkb':'//',
-    \ 'xmath':'#',
-    \ 'xpm2':'!',
-    \ 'xquery':'(:',
-    \ 'yaml':'#',
-    \ 'z8a':';',
-\ }
-
-" ================[ Commands ]================
-command! -nargs=1 Tc call s:PrintTemplate(g:title,<q-args>)
-command! -nargs=1 Stc call s:PrintTemplate(g:subTitle,<q-args>)
-
-
-let g:blockTemplating#minimumPadding = get(g:, 'blockTemplating#minimumPadding', 4)
-" These options define what delimitators should be
+"{{{ ================[ Commands ]================
+nnoremap <silent> <leader>t :Bt g:defaults#
+command! -complete=var -nargs=+ Bt call s:PrintTemplate(<f-args>)
+"}}
+" Define the minimum number of chars to pad the text (can be set to 0)
+let g:blockTemplating#minimumPadding = get(g:, 'blockTemplating#minimuomPadding', 4)
+" If set the text will no wrap on multiple lines if too long for the block
+let g:blockTemplating#wrap = get(g:, 'blockTemplating#wrap', 1)
+" These options define what special should be
 " used for templating
-let g:blockTemplating#blockTextId = get(g:, 'blockTemplating#blockTextId', '__txt__')
-let g:blockTemplating#blockComCharId = get(g:, 'blockTemplating#blockComCharId', '__comchar__')
-
-" Returns the comment char for the current file
-function! g:blockTemplating#ftComment()
-    if has_key(s:ftCommentAssoc, &filetype)
-        let l:comChar = s:ftCommentAssoc[&filetype]
-    else
-        let l:comChar = s:ftCommentAssoc['sh']
-    endif
-    return l:comChar
-endfunction
+let g:blockTemplating#textId = get(g:, 'blockTemplating#textId', '__txt__')
+let g:blockTemplating#comCharId = get(g:, 'blockTemplating#comCharId', '__comchar__')
+let g:blockTemptating#markerStartId = get(g:, 'blockTemplating#markerStartId', '__marker-s__')
+let g:blockTemplating#markerEndId = get(g:, 'blockTemplating#markerEndId', '__marker-e__')
 
 " Prints the templates
-function! s:PrintTemplate(block, text)
-    let s:userText = trim(a:text)
+function! s:PrintTemplate(json, text) abort
+    let s:userText = split(trim(a:text), '\\')
+    let s:json = {a:json}
+
     " Support for prepending every line
-    let s:prep = s:ParseElement(a:block.prepend)
-
-
-    let l:lines = a:block.lines
-    if type(l:lines) == 3
-        for line in l:lines
-            call s:ParseLine(line)
+    let s:prep = ''
+    if has_key(s:json, 'prepend')
+        let s:prep = s:ParseElement(s:json.prepend)
+    endif
+    " Template level option override
+    let s:overrides = {}
+    if has_key(s:json, 'overrides')
+        for override in s:json.overrides->keys()
+            let val = s:json.overrides[override]
+            if !empty(val)
+                execute 'let s:overrides.'.override.' = "'.val.'"'
+            endif
+        endfor
+    endif
+    let lines = s:json.lines
+    let block = ''
+    " The 'lines' element of a dict can either be a list
+    " or a single element (if there is only one line)
+    " Is there a way to handle both case the same way
+    " without changing the 'lines' element to always be a list ?
+    if type(lines) == 3
+        for line in lines
+            let block .= s:ParseElement(line)."\n"
         endfor
     else
-        call s:ParseLine(l:lines)
+            let block .= s:ParseElement(lines)
     endif
+    " Print lines to file (is there a better way ?)
+    " I don't like having to split the block
+    for line in split(block, '\n')
+        :norm o<CR>
+        call setline('.',s:prep.line)
+    endfor
 endfunction
 
-function! s:ParseLine(toParse)
-    let l:result = s:ParseElement(a:toParse)
-    if type(l:result) == 3
-        for l:resultLine in l:result
-            call s:PrintLine(l:resultLine)
+function s:getOpt(name)
+    return get(s:overrides, a:name,get(g:, 'blockTemplating#'.a:name))
+endfunction
+
+" Parse the lines of text
+function s:ParseUDText(uDLine) abort
+
+    " To accomodate for empty values in the template
+    for key in ['padding', 'surround', 'lineContent']
+        if !has_key(a:uDLine,key) || empty(a:uDLine[key])
+            let a:uDLine[key] = {}
+        endif
+        for side in ['left', 'right']
+            if !has_key(a:uDLine[key],side) || empty(a:uDLine[key][side])
+                let a:uDLine[key][side] = [{ 'chars' : '' }]
+            endif
         endfor
-    else
-        call s:PrintLine(l:result)
-    endif
-endfunction
-
-function! s:PrintLine(toPrint)
-
-    :norm O<CR>
-    call setline('.',s:prep.a:toPrint)
-endfunction
-
-function s:ParseUDText(uDLine)
-
-    let l:blockLength = str2nr(a:uDLine.size)
-    let l:surround = {
-        \'left': s:ParseElement(a:uDLine.surround.left),
-        \'right': s:ParseElement(a:uDLine.surround.right)
-    \}
-    " Very bad solution.... Should intercept all exeption for missing keys
-    " and act in contect of this application or have all values in templates
-    if !has_key(a:uDLine, 'lineContent')
-        call extend(a:uDLine, {'lineContent': {
-                                \'left' : {'chars' : ''},
-                                \'right': {'chars' : ''}
-                            \}
-                        \})
-    endif
-
-    " Calculate how much space is left by substracting the length of you line of txt,
-    " the length of the string use to prepend / surround text (if present),
-    " and all chars present in the template to the max number of chars per line
-    let l:lineContent = [a:uDLine.lineContent.left, a:uDLine.lineContent.right]
-    let l:additionalChars = strchars(s:prep) + strchars(join([l:surround.left,l:surround.right],"")) + strchars(s:ParseElement(l:lineContent))
-    let l:maxCharPerLine = l:blockLength - l:additionalChars - g:blockTemplating#minimumPadding
+    endfor
+    unlet key side
+    let blockLength = str2nr(a:uDLine.size)
+    " Calculate how much space is left by substracting the length of the text
+    " you input, the length of the string use to prepend / surround text (if present),
+    " and all chars other chars present in the template on that line
+    " to the max number of chars per line
+    let additionalChars =
+        \+ strchars(s:ParseElement([a:uDLine.surround.left,a:uDLine.surround.right]))
+        \+ strchars(s:ParseElement([a:uDLine.lineContent.left,a:uDLine.lineContent.right]))
+    let maxCharPerLine = blockLength - (additionalChars + g:blockTemplating#minimumPadding)
     " TODO : What happens if you have multiple lines of userdefined text ?
-    " TODO : Hyphenation or word that are longer than a line
+    " TODO : Hyphenation of word that are longer than a line
 
     " Determines how many lines should be necessary to print the text
-    " in the comment
-    let l:textLine = []
-    let l:nmbLine = 0
-    let l:counter = 0
-    let l:wordList = split(s:userText)
-    while l:counter < str2nr(system('echo "'.s:userText.'" | wc -w'))
-        let l:currWord = l:wordList[l:counter]
-        " Checking if adding a new word to the line will overflow
-        " the + 1 is because every word (except for the first one of the line)
-        " is prepended with a space
-        if l:nmbLine + 1 > len(l:textLine)
-                call add(l:textLine, '')
-        endif
-        if strchars(l:textLine[l:nmbLine]) + strchars(l:currWord) + 1 > l:maxCharPerLine
-            if !empty(l:textLine[l:nmbLine])
-                let l:nmbLine += 1
+    let textLine = []
+    if s:getOpt('wrap')
+        let wordList = split(s:userText[0])
+        call remove(s:userText,0)
+        let lineIdx = 0
+        for word in wordList
+            if lineIdx == len(textLine) | call add(textLine, '') | endif
+            " If the text on the current line is too long
+            if strchars(textLine[lineIdx]) + strchars(word) + 1 > maxCharPerLine
+                " The line is composed of multiple word go to next line
+                if !empty(textLine[lineIdx])
+                    let lineIdx += 1
+                else
+                    " TODO: Hyphenate word
+                endif
             else
-                " TODO: Hyphenate word
+                " Add a space between word if this is not the first of the line
+                if !empty(textLine[lineIdx])
+                    let textLine[lineIdx] .= ' '
+                endif
+                let textLine[lineIdx] .= word
             endif
-        else
-            if !empty(l:textLine[l:nmbLine])
-               let l:textLine[l:nmbLine] .= ' '
-            endif
-            let l:textLine[l:nmbLine] .= l:currWord
-            let l:counter += 1
+        endfor
+        unlet lineIdx wordList word
+    else " If the wrap option is not set, expand the line size for the whole text to fit
+        call add(textLine, s:userText[0])
+        let diff = blockLength - (strchars(s:userText[0]) + s:getOpt('minimumPadding') + additionalChars)
+        call remove(s:userText,0)
+        if diff < 0
+            let blockLength += abs(diff)
         endif
-    endwhile
+        unlet diff
+    endif
+
+    " Is there a better way to initialize an empty list with n items
+    let nmbLines = len(textLine)->range()
+    " This definitly does not feel like the intented solution...
+    " but it's a oneliner so...
+    let buffer = copy(nmbLines)->map('""')
 
     " Per lines of text
-    let l:buffer = []
-    let l:counter = 0
-    for l:text in l:textLine
-        " Calculate what how much padding you should have on the left/right and substitute
-        " the template string with thoses values
-        let l:padding = l:blockLength - (strchars(l:text) + l:additionalChars)
-        if l:counter + 1 > len(l:buffer)
-            call insert(l:buffer, "")
-        endif
-        let l:buffer[0] = s:ParseElement([
-                            \a:uDLine.lineContent.left,
-                            \{ 'chars' : a:uDLine.leftPadding, 'nmb': l:padding/2 + l:padding%2},
-                            \{ 'chars' : surround.left },
-                            \{ 'chars' : l:text },
-                            \{ 'chars' : surround.right },
-                            \{ 'chars' : a:uDLine.rightPadding, 'nmb': l:padding/2 },
-                            \a:uDLine.lineContent.right
-                        \])
-        let l:counter += 1
+    for i in nmbLines
+        " Calculate how much padding you should need on the line
+        let nmbToPad = blockLength - (strchars(textLine[i]) + additionalChars)
+        " Divides the padding by 1 (nop) if there is only padding on one side
+        " and by two if there is padding on both sides
+        let bySide = nmbToPad
+
+        for j in len(copy(a:uDLine.padding)->filter('!empty(v:val[0].chars)'))->range()
+            if !empty(a:uDLine.padding->values()[j]) | let bySide /= j + 1  | endif
+        endfor
+
+        " Build the line
+        let buffer[i] .= s:ParseElement(a:uDLine.lineContent.left)
+        let buffer[i] .= repeat(a:uDLine.padding.left[0].chars,bySide + nmbToPad % 2)
+        let buffer[i] .= s:ParseElement(a:uDLine.surround.left)
+        let buffer[i] .= textLine[i]
+        let buffer[i] .= s:ParseElement(a:uDLine.surround.right)
+        let buffer[i] .= repeat(a:uDLine.padding.right[0].chars, bySide)
+        let buffer[i] .= s:ParseElement(a:uDLine.lineContent.right)
     endfor
-    return l:buffer
+    return buffer->join("\n")
 endfunction
 
-function s:ParseChars(item)
-    let l:chars = a:item.chars
-    if l:chars == g:blockTemplating#blockComCharId
-        let l:chars = g:blockTemplating#ftComment()
+" Parse the smallest element of a template => the dict { char : nmb }
+function s:ParseChars(item) abort
+    if empty(a:item)
+        return ''
     endif
-
-    if has_key(a:item, 'nmb')
-        let l:nmb = a:item.nmb
+    let chars = a:item.chars
+    " Special characters
+    if chars == s:getOpt('comCharId')
+        let chars = g:ftComment#get()
+    elseif chars == s:getOpt('markerStartId')
+        let chars = split(&foldmarker, ',')[0]
+    elseif chars == s:getOpt('markerEndId')
+        let chars = split(&foldmarker, ',')[1]
+    endif
+    if a:item->has_key('nmb')
+        let nmb = a:item.nmb
     else
-        let l:nmb = 1
+        let nmb = 1
     endif
-    return repeat(l:chars,nmb)
+    return repeat(chars,nmb)
 endfunction
 
-function! s:ParseList(list)
-    let l:buffer = ''
-    for l:chars in a:list
-        let l:buffer .= s:ParseChars(l:chars)
-    endfor
-    return l:buffer
-endfunction
+" Wrapper to parse any element, for now thoses elements are
+" sorted by type... I'd like to find another way
+function! s:ParseElement(el) abort
+    let result = ''
+    let elType = type(a:el)
 
-function! s:ParseElement(el)
-    let l:result = ''
-    let l:elType = type(a:el)
-    if l:elType == 3
-        let l:result = s:ParseList(a:el)
-    elseif l:elType == 4
-        if has_key(a:el, 'size')
-            let l:result = s:ParseUDText(a:el)
+    if elType == 3
+        for item in a:el
+            let result .= s:ParseElement(item)
+        endfor
+    elseif elType == 4
+        if a:el->has_key('size')
+            let result = s:ParseUDText(a:el)
         else
-            let l:result = s:ParseChars(a:el)
+            let result = s:ParseChars(a:el)
         endif
     endif
-    return l:result
+    return result
 endfunction
-
-runtime templates/*
