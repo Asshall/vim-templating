@@ -1,11 +1,12 @@
 #!/usr/bin/python
 
 from usage import defaultUsage, morehelp
+from utils import Block, Line, TextLine, Chars
 from sys import argv, exit as sys_exit
 from os import path
 from getopt import gnu_getopt as getopt, GetoptError
 from json import dumps as dump_json
-from re import compile as re_compile, search as re_search
+import re
 
 def expand_return(func):
     def wrapper_func(*args):
@@ -21,12 +22,9 @@ def expand_return(func):
 def get_ids():
     return [id[1] for id in OPTIONS['overrides'].items() if id[0][-2:] == 'Id']
 
-# Add special char support
-def get_special_char_idx(l):
-    idReg = re_compile('|'.join(get_ids()))
-    return [match.start() for match in idReg.finditer(l)], \
-        [match.end() for match in idReg.finditer(l)]
-
+# Return a list of all chars and special chars
+def preparse_line(l):
+    return [c for c in re.split('(' + '|'.join(get_ids()) + '|.)', l) if c]
 
 def get_index(l):
     return l[0] if l else None
@@ -36,7 +34,7 @@ def clean_lineContent(lc,p):
     parsedLc = parse_line(lc)
     if p and 'chars' in p[0] :
         return parsedLc[:-1] if parsedLc[-1]['chars'] == p[0]['chars'] else parsedLc
-    else : 
+    else :
         return parsedLc
 
 # The reverse argument is to traverse the line from
@@ -47,13 +45,14 @@ def clean_lineContent(lc,p):
 #       right side: left to right
 @expand_return
 def parse_text_line(line, isLeft=False):
+    return ''
     padding, surround, lineContent, prevChar = '', '','', ''
     counter = 0
     def inverse(s):
         return  s[::-1] if isLeft else s
     line = inverse(line)
 
-    starts, ends = get_special_char_idx(line)
+    starts, ends = preparse_line(line)
     while counter < len(line):
         start = get_index(starts)
         if counter == start:
@@ -93,36 +92,24 @@ def parse_text_line(line, isLeft=False):
     return { 'chars' : padding }, parse_line(inverse(surround)), inverse(lineContent)
 
 def parse_line(line):
-    result = []
 
-    def append_result(char):
-        result.append({'chars': char, 'nmb' : 1 })
-    counter = 0
-    starts, ends = get_special_char_idx(line)
-    while counter < len(line):
-        start = get_index(starts)
-        if counter == start:
-            end = get_index(ends)
-            if result and result[-1]['chars'] == line[start:end]:
-                result[-1]['nmb'] += 1
-            else:
-                append_result(line[start:end])
-            counter += end - start - 1
-            starts.pop(0); ends.pop(0)
-        elif not result or result[-1]['chars'] != line[counter]:
-            append_result(line[counter])
+    res = Line()
+    for char in line:
+        if not res.chars or res.get_curr_char().characters != char:
+            res.add_char(char)
         else:
-            result[-1]['nmb'] += 1
-        counter += 1
-    return result
+            res.incr_curr_char()
+
+    return res
 
 def parse_line_wrapper(line):
     currIndex = 0
+    line = preparse_line(line)
 
     if OPTIONS['overrides']['textId'] in line:
         splittedLine = line.split(OPTIONS['overrides']['textId'])
         # Compute the length of the line by making all ids size (but textId) only 1
-        ids = re_compile('|'.join(\
+        ids = re.compile('|'.join(\
         [id for id in get_ids() if id != OPTIONS['overrides']['textId']]))
 
         result = {
@@ -135,7 +122,7 @@ def parse_line_wrapper(line):
         # This is dumb, and is a consequence of bad code
         # plz change me
         try:
-            exceptMsg = '''{0} {1} char : "{2}" 
+            exceptMsg = '''{0} {1} char : "{2}"
             is not null and not contained in line : "{3}"'''
             for attr in ['surround', 'padding']:
                 dictTmp = {'left' : {}, 'right' : {}}
@@ -183,12 +170,12 @@ def parse_line_wrapper(line):
         elif result['padding']:
             # If only padding is known, surround are the preceeding characters
             # and lineContent the folowing
-            idxL = re_search(result['padding']['left'], splittedLine[0][::-1]).start()
+            idxL = re.search(result['padding']['left'], splittedLine[0][::-1]).start()
             result['surround']['left'] = splittedLine[0][::-1][:idxL][::-1]
             result['lineContent']['left'] = clean_lineContent(\
                     splittedLine[0][::-1][idxL+1:], result['padding']['left'][::-1])
 
-            idxR = re_search(result['padding']['right'], splittedLine[1]).start()
+            idxR = re.search(result['padding']['right'], splittedLine[1]).start()
             result['surround']['right'] = splittedLine[1][:idxR]
             result['lineContent']['right'] = clean_lineContent(\
                     splittedLine[1][idxR+1:], result['padding']['right'])
@@ -253,19 +240,19 @@ if __name__ == '__main__':
         for opt in opts:
             name = opt[0]
             value = opt[1]
-            if re_search('--?h(help)?', name):
+            if re.search('--?h(help)?', name):
                 sys_exit(usage)
-            elif re_search('-(H|-morehelp)', name):
+            elif re.search('-(H|-morehelp)', name):
                 sys_exit(morehelp)
-            elif re_search('--?p(repend)?', name):
+            elif re.search('--?p(repend)?', name):
                 OPTIONS['prepend'] = parse_line(value)
-            elif re_search('--?[Pp](adding)?', name):
+            elif re.search('--?[Pp](adding)?', name):
                 parse_ps(value, 'padding')
-            elif re_search('--?s(urround)?', name):
+            elif re.search('--?s(urround)?', name):
                 parse_ps(value, 'surround')
-            elif re_search('--?o(utput)?', name):
+            elif re.search('--?o(utput)?', name):
                 OPTIONS['output'] = value
-            elif re_search('--?[Oo](verride)?', name):
+            elif re.search('--?[Oo](verride)?', name):
                 for override in value.split(','):
                     n, v = override.split(':')
                     OPTIONS['overrides'][n] = v
@@ -282,7 +269,8 @@ if __name__ == '__main__':
                 'lines': []
     }
     for line in lines:
-        output['lines'].append(parse_line_wrapper(line.strip('\n')))
+        parse_line(preparse_line(line))
+        #  output['lines'].append(parse_line_wrapper(line.strip('\n')))
     if OPTIONS['output']:
         of = open(OPTIONS['output'], 'a')
         output = dump_json(output)

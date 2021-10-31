@@ -13,8 +13,8 @@
 " let g:blockTemplating#Loaded = 1
 
 "{{{ ================[ Commands ]================
-nnoremap <silent> <leader>t :Bt g:defaults#
-command! -complete=var -nargs=+ Bt call s:PrintTemplate(<f-args>)
+nnoremap <silent> <leader>b :Bt g:defaults#
+command! -complete=var -nargs=+ Bt call s:PrintTemplate(<f-args>,<q-args>)
 "}}
 " Define the minimum number of chars to pad the text (can be set to 0)
 let g:blockTemplating#minimumPadding = get(g:, 'blockTemplating#minimuomPadding', 4)
